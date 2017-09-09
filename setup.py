@@ -1,4 +1,5 @@
-# -*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -
+#   Modified by Archwizard56
 from __future__ import unicode_literals
 
 import re
@@ -14,9 +15,9 @@ def get_version(filename):
 setup(
     name='Mopidy-Plex',
     version=get_version('mopidy_plex/__init__.py'),
-    url='https://github.com/havardgulldahl/mopidy-plex',
+    url='https://github.com/Archwizard56/mopidy-plex',
     license='Apache License, Version 2.0',
-    author='Håvard Gulldahl',
+    author='Håvard Gulldahl And Archwizard56',
     author_email='havard@gulldahl.no',
     description='Mopidy extension for playing audio from a Plex server',
     long_description=open('README.rst').read(),

@@ -6,7 +6,6 @@ import urllib
 
 from mopidy import backend
 from mopidy.models import Artist, Album, SearchResult, Track, Ref
-
 from plexapi import audio as plexaudio
 from plexapi import utils as plexutils
 
@@ -44,7 +43,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:album':
             logger.debug('self._browse_albums()')
             return [self._item_ref(item, 'album') for item in
-                    plexutils.listItems(self.plex, '/library/sections/4/albums')]
+                    plexutils.listItems(self.plex, '/library/sections/' + config['plex']['library_id'] + '/albums')]
 
         # a single album
         # uri == 'plex:album:album_id'
@@ -59,7 +58,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:artist':
             logger.debug('self._browse_artists()')
             return [self._item_ref(item, 'artist') for item in
-                    plexutils.listItems(self.plex, '/library/sections/4/all')]
+                    plexutils.listItems(self.plex, '/library/sections/' + config['plex']['library_id'] + '/all')]
 
         # a single artist
         # uri == 'plex:artist:artist_id'
@@ -229,4 +228,3 @@ def wrap_album(plexalbum, plex_uri_method, resolve_uri_method):
                  images=[resolve_uri_method(plexalbum.thumb),
                          resolve_uri_method(plexalbum.art)]
                 )
-
