@@ -27,6 +27,7 @@ class Extension(ext.Extension):
         schema['server'] = config.String()
         schema['username'] = config.String()
         schema['password'] = config.Secret()
+        schema['token'] = config.Secret()
         return schema
 
     def setup(self, registry):
