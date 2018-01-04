@@ -64,7 +64,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
         return '{}:{}'.format(prefix, uri_path)
 
     def resolve_uri(self, uri_path):
-        'Get a leaf uri and return full address to plex server'
+        '''Get a leaf uri and return full address to plex server'''
         if not uri_path.startswith('/library/metadata/'):
             uri_path = '/library/metadata/' + uri_path
         return self.plex.url(uri_path)
