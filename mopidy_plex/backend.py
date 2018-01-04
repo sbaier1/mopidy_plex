@@ -11,7 +11,6 @@ import requests
 from plexapi.server import PlexServer
 from plexapi.library import MusicSection
 from plexapi.myplex import MyPlexAccount
-from .playlists import PlexPlaylistsProvider
 from .playback import PlexPlaybackProvider
 from .library import PlexLibraryProvider
 
@@ -44,7 +43,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
         self.uri_schemes = ['plex', ]
         self.library = PlexLibraryProvider(backend=self)
         self.playback = PlexPlaybackProvider(audio=audio, backend=self)
-        self.playlists = PlexPlaylistsProvider(backend=self)
+
 
 
 
