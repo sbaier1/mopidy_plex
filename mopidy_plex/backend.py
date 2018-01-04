@@ -36,7 +36,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
                                             user_agent='%s/%s' % (mopidy_plex.Extension.dist_name,
                                                                   mopidy_plex.__version__)
                                            )
-        self.account = MyPlexAccount.signin(config['plex']['username'], config['plex']['password'])
+        self.account = MyPlexAccount(config['plex']['username'], config['plex']['password'])
         self.plex = self.account.resource(config['plex']['server']).connect()
         self.music = [s for s in self.plex.library.sections() if s.TYPE == MusicSection.TYPE][0]
         logger.debug('Found music section on plex server %s: %s', self.plex, self.music)
