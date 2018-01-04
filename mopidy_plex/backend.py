@@ -29,7 +29,7 @@ def get_requests_session(proxy_config, user_agent):
 
 
 class PlexBackend(pykka.ThreadingActor, backend.Backend):
-    def __init__(self, config, audio):
+    def __init__(self, config, audio, baseurl, token):
         super(PlexBackend, self).__init__(audio=audio)
         self.config = config
         self.session = get_requests_session(proxy_config=config['proxy'],
