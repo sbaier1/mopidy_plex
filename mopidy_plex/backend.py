@@ -29,15 +29,15 @@ def get_requests_session(proxy_config, user_agent):
 
 
 class PlexBackend(pykka.ThreadingActor, backend.Backend):
-    def __init__(self, config, audio, baseurl, token):
+    def __init__(self, config, audio):
         super(PlexBackend, self).__init__(audio=audio)
         self.config = config
         self.session = get_requests_session(proxy_config=config['proxy'],
                                             user_agent='%s/%s' % (mopidy_plex.Extension.dist_name,
                                                                   mopidy_plex.__version__)
                                            )
-        self.baseurl = (config['plex']['server'])
-        self.token = (config['plex']['token'])
+        baseurl = (config['plex']['server'])
+        token = (config['plex']['token'])
         self.plex = PlexServer(baseurl, token)
         self.music = [s for s in self.plex.library.sections() if s.TYPE == MusicSection.TYPE][0]
         logger.debug('Found music section on plex server %s: %s', self.plex, self.music)
