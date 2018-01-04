@@ -18,6 +18,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
     def __init__(self, *args, **kwargs):
         super(PlexLibraryProvider, self).__init__(*args, **kwargs)
         self.plex = self.backend.plex
+        self.library_id = self.backend.library_id
         self._root = []
         self._root.append(Ref.directory(uri='plex:album', name='Albums'))
         self._root.append(Ref.directory(uri='plex:artist', name='Artists'))
@@ -43,7 +44,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:album':
             logger.debug('self._browse_albums()')
             return [self._item_ref(item, 'album') for item in
-                    plexutils.listItems(self.plex, '/library/sections/12/albums')]
+                        plexutils.listItems(self.plex, '/'.join(['/library/sections',self.library_id,'albums']))]
 
         # a single album
         # uri == 'plex:album:album_id'
@@ -58,7 +59,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:artist':
             logger.debug('self._browse_artists()')
             return [self._item_ref(item, 'artist') for item in
-                    plexutils.listItems(self.plex, '/library/sections/12/all')]
+                    plexutils.listItems(self.plex, '/'.join(['/library/sections',self.library_id,'all']))]
 
         # a single artist
         # uri == 'plex:artist:artist_id'
