@@ -43,7 +43,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:album':
             logger.debug('self._browse_albums()')
             return [self._item_ref(item, 'album') for item in
-                    plexutils.listItems(self.plex, '/library/sections/' + config['plex']['library_id'] + '/albums')]
+                    plexutils.listItems(self.plex, '/library/sections/12/albums')]
 
         # a single album
         # uri == 'plex:album:album_id'
@@ -58,7 +58,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if uri == 'plex:artist':
             logger.debug('self._browse_artists()')
             return [self._item_ref(item, 'artist') for item in
-                    plexutils.listItems(self.plex, '/library/sections/' + config['plex']['library_id'] + '/all')]
+                    plexutils.listItems(self.plex, '/library/sections/12/all')]
 
         # a single artist
         # uri == 'plex:artist:artist_id'
