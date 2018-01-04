@@ -36,7 +36,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
                                             user_agent='%s/%s' % (mopidy_plex.Extension.dist_name,
                                                                   mopidy_plex.__version__)
                                            )
-        self.baseurl = Plexserver(config['plex']['server'])
+        self.baseurl = (config['plex']['server'])
         self.token = (config['plex']['token'])
         self.plex = PlexServer(baseurl, token)
         self.music = [s for s in self.plex.library.sections() if s.TYPE == MusicSection.TYPE][0]
