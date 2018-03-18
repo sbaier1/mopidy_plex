@@ -56,6 +56,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
              plex:album:2323
              plex:playlist:3432
         '''
+        uri_path = str(uri_path)
         if not uri_path.startswith('/library/metadata/'):
             uri_path = '/library/metadata/' + uri_path
 
@@ -65,6 +66,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
 
     def resolve_uri(self, uri_path):
         '''Get a leaf uri and return full address to plex server'''
+        uri_path = str(uri_path)
         if not uri_path.startswith('/library/metadata/'):
             uri_path = '/library/metadata/' + uri_path
         return self.plex.url(uri_path)

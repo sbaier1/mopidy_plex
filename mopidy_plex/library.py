@@ -12,6 +12,8 @@ from plexapi import utils as plexutils
 from mopidy_plex import logger
 from .mwt import MWT
 
+from functools import reduce
+
 class PlexLibraryProvider(backend.LibraryProvider):
     root_directory = Ref.directory(uri='plex:directory', name='Plex Music')
 
@@ -40,26 +42,33 @@ class PlexLibraryProvider(backend.LibraryProvider):
             return self._root
         parts = uri.split(':')
 
+        sections = self.plex.library.sections()
+        artists = [sec for sec in sections if sec.type == 'artist']
         # albums
         if uri == 'plex:album':
             logger.debug('self._browse_albums()')
-            return [self._item_ref(item, 'album') for item in
-                        plexutils.listItems(self.plex, '/'.join(['/library/sections',self.library_id,'albums']))]
+            albums = list()
+            for a in artists:
+                try:
+                    albums += a.albums()
+                except Exception as e:
+                    logger.warning('Failed to process albums for {}: {}'.format(a, e))
+            # logger.info('Albums: {}'.format([a.title for a in albums]))
+            logger.debug('{} albums found'.format(len(albums)))
+            return [self._item_ref(item, 'album') for item in albums]
 
         # a single album
         # uri == 'plex:album:album_id'
         if len(parts) == 3 and parts[1] == 'album':
             logger.debug('self._browse_album(uri)')
             album_id = parts[2]
-            return [self._item_ref(item, 'track') for item in
-                    plexutils.listItems(self.plex,
-                                         '/library/metadata/{}/children'.format(album_id))]
+            key = '/library/metadata/{}/children'.format(album_id)
+            return [self._item_ref(item, 'track') for item in self.plex.fetchItems(key)]
 
         # artists
         if uri == 'plex:artist':
             logger.debug('self._browse_artists()')
-            return [self._item_ref(item, 'artist') for item in
-                    plexutils.listItems(self.plex, '/'.join(['/library/sections',self.library_id,'all']))]
+            return [self._item_ref(item, 'artist') for item in artists]
 
         # a single artist
         # uri == 'plex:artist:artist_id'
@@ -113,9 +122,9 @@ class PlexLibraryProvider(backend.LibraryProvider):
 
         ret = []
         for item in self.plex.query(plex_uri):
-            plextrack = plexutils.buildItem(self.plex,
-                                            item,
-                                            '/library/metadata/{}'.format(item.attrib['ratingKey']))
+            logger.info(repr(item))
+            logger.info(repr(item.attrib['ratingKey']))
+            plextrack = self.plex.fetchItem(str(item.attrib['ratingKey']))
             ret.append(wrap_track(plextrack, self.backend.plex_uri))
         return ret
 
