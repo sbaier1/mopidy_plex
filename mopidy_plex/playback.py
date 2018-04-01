@@ -33,11 +33,11 @@ class PlexPlaybackProvider(backend.PlaybackProvider):
         if _rx is None: # uri unknown
             logger.info('Unkown uri: %s', uri)
             return None
-        elem = plexutils.findKey(self.backend.plex, _rx.group('track_id'))
+        elem = self.backend.plex.fetchItem(int(_rx.group('track_id')))
         logger.info('getting file parts for eleme %r', elem)
         try:
             p = list(elem.iterParts())[0].key # hackisly get direct url of first part
-            return '%s%s?X-Plex-Token=%s' % (elem.server.baseurl, p, self.backend.plex.token)
+            return '%s%s?X-Plex-Token=%s' % (self.backend.plex._baseurl, p, self.backend.plex._token)
         except Exception as e:
             logger.exception(e)
             logger.info('fallback to returning stream for elem %r', elem)

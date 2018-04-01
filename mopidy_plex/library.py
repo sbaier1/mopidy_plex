@@ -124,7 +124,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         for item in self.plex.query(plex_uri):
             logger.info(repr(item))
             logger.info(repr(item.attrib['ratingKey']))
-            plextrack = self.plex.fetchItem(str(item.attrib['ratingKey']))
+            plextrack = self.plex.fetchItem(int(item.attrib['ratingKey']))
             ret.append(wrap_track(plextrack, self.backend.plex_uri))
         return ret
 
