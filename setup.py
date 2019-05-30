@@ -28,6 +28,8 @@ setup(
         'setuptools',
         'Mopidy >= 1.0',
         'Pykka >= 1.1',
+        'requests',
+        'plexapi'
     ],
     entry_points={
         'mopidy.ext': [

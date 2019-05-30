@@ -54,13 +54,28 @@ Before starting Mopidy, you must add configuration for
 Mopidy-Plex to your Mopidy configuration file::
 
     [plex]
+    type = myplex
     enabled = true
     server = Servername
     username = Username
     password = Password
+    library = Music
 
 Servername above is the name of the server (not the hostname and port). If logged into Plex Web you can see the server name in the top left above your available libraries.
 
+You can also use direct as type to connect directly to your server instead of authenticating through MyPlex if your server is unclaimed (not logged in)
+
+Troubleshooting
+===============
+
+If you are having trouble with some library items, you must change the default encoding in your mopidy startup script::
+
+    if __name__ == '__main__':
+        reload(sys)
+        sys.setdefaultencoding('UTF8')
+        sys.exit(
+            load_entry_point('Mopidy==3.0.0a1', 'console_scripts', 'mopidy')()
+        )
 
 Project resources
 =================

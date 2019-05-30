@@ -27,8 +27,8 @@ class Extension(ext.Extension):
         schema['server'] = config.String()
         schema['username'] = config.String()
         schema['password'] = config.Secret()
-        schema['token'] = config.Secret()
-        schema['library_id'] = config.String()
+        schema['library'] = config.String()
+        schema['type'] = config.String()
         return schema
 
     def setup(self, registry):

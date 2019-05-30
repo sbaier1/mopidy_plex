@@ -7,12 +7,12 @@ from mopidy import backend, httpclient
 import pykka
 import requests
 
-
-from plexapi.server import PlexServer
 from plexapi.library import MusicSection
 from plexapi.myplex import MyPlexAccount
+from plexapi.server import PlexServer
 from .playback import PlexPlaybackProvider
 from .library import PlexLibraryProvider
+from .playlists import PlexPlaylistsProvider
 
 import mopidy_plex
 from mopidy_plex import logger
@@ -36,15 +36,33 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
                                             user_agent='%s/%s' % (mopidy_plex.Extension.dist_name,
                                                                   mopidy_plex.__version__)
                                            )
-        baseurl = (config['plex']['server'])
-        token = (config['plex']['token'])
-        self.plex = PlexServer(baseurl, token)
-        self.music = [s for s in self.plex.library.sections() if s.TYPE == MusicSection.TYPE][0]
+        type = config['plex']['type']
+        library = (config['plex']['library'])
+        self.plex = None
+        self.music = None
+        if type == 'myplex':
+            server = (config['plex']['server'])
+            user = (config['plex']['username'])
+            password = (config['plex']['password'])
+            account = MyPlexAccount(user, password)
+            logger.info('Connecting to plex server: %s', server)
+            self.plex = account.resource(server).connect(ssl=False)
+            self.music = self.plex.library.section(library)
+        elif type == 'direct':
+            baseurl = (config['plex']['server'])
+            token = (config['plex']['token'])
+            self.plex = PlexServer(baseurl, token)
+            self.music = self.plex.library.section(library)
+        else:
+            logger.error('Invalid value for plex backend type: %s', type)
+
+        logger.info('Connected to plex server')
         logger.debug('Found music section on plex server %s: %s', self.plex, self.music)
-        self.library_id = config['plex']['library_id']
+        self.library_id = self.music.key
         self.uri_schemes = ['plex', ]
         self.library = PlexLibraryProvider(backend=self)
         self.playback = PlexPlaybackProvider(audio=audio, backend=self)
+        self.playlists = PlexPlaylistsProvider(backend=self)
 
 
 
