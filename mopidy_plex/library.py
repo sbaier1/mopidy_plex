@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import urllib
@@ -8,6 +9,8 @@ from mopidy import backend
 from mopidy.models import Artist, Album, SearchResult, Track, Ref
 from plexapi import audio as plexaudio
 from plexapi import utils as plexutils
+
+import re
 
 from mopidy_plex import logger
 from .mwt import MWT
@@ -23,6 +26,10 @@ class PlexLibraryProvider(backend.LibraryProvider):
         self.plex = self.backend.plex
         self.library_id = self.backend.library_id
         self.music = self.backend.music
+        # TODO try if we can serialize the tree and reuse it safely when getting a new session later
+        # TODO maybe serialize the data in another way, to JSON, sqlite or similar instead.
+        # TODO try populating the tree with multiple threads, run populate_artist() in multiple threads and sync only adding to the root node
+        self.plex_cache = PlexTree(self.plex)
         self._root = []
         self._root.append(Ref.directory(uri='plex:album', name='Albums'))
         self._root.append(Ref.directory(uri='plex:artist', name='Artists'))
@@ -46,14 +53,15 @@ class PlexLibraryProvider(backend.LibraryProvider):
 
         # For now, we only browse the music library in the config.
         # Could filter,flatmap all music sections to browse all music in theory too.
-        artists = self.music.all()
+        artist_nodes = self.plex_cache.artists()
         # albums
         if uri == 'plex:album':
             logger.debug('self._browse_albums()')
             albums = list()
-            for a in artists:
+            for a in artist_nodes:
                 try:
-                    albums += a.albums()
+                    # Map the album nodes back into the library item
+                    albums += [node.item for node in a.children]
                 except Exception as e:
                     logger.warning('Failed to process albums for {}: {}'.format(a, e))
             # logger.info('Albums: {}'.format([a.title for a in albums]))
@@ -63,6 +71,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         # a single album
         # uri == 'plex:album:album_id'
         if len(parts) == 3 and parts[1] == 'album':
+            # TODO use cache
             logger.debug('self._browse_album(uri)')
             album_id = parts[2]
             key = '/library/metadata/{}/children'.format(album_id)
@@ -70,25 +79,28 @@ class PlexLibraryProvider(backend.LibraryProvider):
 
         # artists
         if uri == 'plex:artist':
+            artists = [node.item for node in artist_nodes]
             logger.debug('self._browse_artists()')
             return [self._item_ref(item, 'artist') for item in artists]
 
         # a single artist
         # uri == 'plex:artist:artist_id'
         if len(parts) == 3 and parts[1] == 'artist':
+            # TODO use cache
             logger.debug('self._browse_artist(uri)')
             artist_id = parts[2]
             # get albums and tracks
             ret = []
             for item in self.plex.fetchItems('/library/metadata/{}/children'.format(artist_id)):
                 ret.append(self._item_ref(item, 'album'))
-            #for item in self.plex.fetchItems('/library/metadata/{}/allLeaves'.format(artist_id)):
+            # for item in self.plex.fetchItems('/library/metadata/{}/allLeaves'.format(artist_id)):
             #    ret.append(self._item_ref(item, 'track'))
             return ret
 
         # all tracks of a single artist
         # uri == 'plex:artist:artist_id:all'
         if len(parts) == 4 and parts[1] == 'artist' and parts[3] == 'all':
+            # TODO use cache
             logger.debug('self._browse_artist_all_tracks(uri)')
             artist_id = parts[2]
             return [self._item_ref(item, 'track') for item in
@@ -125,7 +137,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
             ret.append(wrap_track(plextrack, self.backend.plex_uri))
         return ret
 
-    #@MWT(timeout=3600)
+    # @MWT(timeout=3600)
     def get_images(self, uris):
         '''Lookup the images for the given URIs
 
@@ -137,7 +149,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         Return type:    {uri: tuple of mopidy.models.Image}'''
         return None
 
-    @MWT(timeout=3600)
+    #@MWT(timeout=3600)
     def search(self, query=None, uris=None, exact=False):
         '''Search the library for tracks where field contains values.
 
@@ -178,6 +190,23 @@ class PlexLibraryProvider(backend.LibraryProvider):
         artists = []
         tracks = []
         albums = []
+        result = [node.item for node in self.plex_cache.search(search_query)]
+        if len(result) > 1:
+            logger.info("Using cached search results for query '%s'", search_query)
+            for hit in result:
+                if isinstance(hit, plexaudio.Artist):
+                    artists.append(wrap_artist(hit, self.backend.plex_uri))
+                elif isinstance(hit, plexaudio.Track):
+                    tracks.append(wrap_track(hit, self.backend.plex_uri))
+                elif isinstance(hit, plexaudio.Album):
+                    albums.append(wrap_album(hit, self.backend.plex_uri, self.backend.resolve_uri))
+            return SearchResult(
+                uri=search_uri,
+                tracks=tracks,
+                artists=artists,
+                albums=albums
+            )
+
         for hit in self.plex.search(search_query):
             if isinstance(hit, plexaudio.Artist):
                 artists.append(wrap_artist(hit, self.backend.plex_uri))
@@ -229,3 +258,102 @@ def wrap_album(plexalbum, plex_uri_method, resolve_uri_method):
                  images=[resolve_uri_method(plexalbum.thumb),
                          resolve_uri_method(plexalbum.art)]
                  )
+
+
+# Data structure to store artist album tracks mapping at startup for quick search and browsing
+def populate_artist(artist, artist_node):
+    artist_albums = []
+    try:
+        artist_albums = artist.albums()
+    except:
+        logger.error("Error parsing albums for artist '%s'", artist.title)
+
+    albums = [PlexTree.Node(item.title, item) for item in artist_albums]
+    if len(artist_node.children) == 0:
+        artist_node.children = albums
+    else:
+        [artist_node.children.append(item) for item in albums]
+    for album in albums:
+        tracks = [PlexTree.Node(item.title, item) for item in album.item.tracks()]
+        album.children.append(tracks)
+
+
+class PlexTree:
+    def __init__(self, plex):
+        self.plex = plex
+        self.root = PlexTree.Node("", None)
+        sections = plex.library.sections()
+        # We only want to look through music sections
+        music_sections = [item for item in sections if item.type == 'artist']
+        logger.info("Initializing Plex cache tree...")
+        # Initialize the tree
+        for section in music_sections:
+            logger.info("Caching music section %s", section.title)
+            artists = section.searchArtists()
+            for artist in artists:
+                logger.info("Adding artist '%s'", artist.title)
+                # Search for existing artists with the same name for merging
+                result = [node for node in self.artists() if node.name == artist.title]
+                if not result:
+                    # New artist
+                    artist_node = self.root.add_new_item(artist)
+                    populate_artist(artist, artist_node)
+                elif len(result) == 1:
+                    logger.info("Appending to existing artist")
+                    existing_artist = result[0]
+                    # This will add all the albums and tracks of the new artist (same name) to the existing node,
+                    # merging the items from different libraries (might change this in the future,
+                    # not merging when album exists already, etc.)
+                    populate_artist(artist, existing_artist)
+                else:
+                    logger.error("Multiple results found for artist string %s", artist.title)
+
+    def search(self, search_string):
+        return self.root.search(search_string)
+
+    def artists(self):
+        return self.root.children
+
+    class Node:
+        def __init__(self, name, item):
+            self.name = name
+            self.item = item
+            self.children = []
+
+        def search(self, search_string):
+            results = []
+            if search_string in self.name.lower():
+                results.append(self)
+            for item in self.children:
+                results.append(item.search(search_string))
+            return results
+
+        # Search for items matching the string exactly, for populating the tree initially
+        def search_exact(self, search_string):
+            results = []
+            if search_string == self.name:
+                results.append(self)
+            for item in self.children:
+                if not isinstance(item, PlexTree.Node):
+                    print(dir(item))
+                    print(item)
+                [results.append(item) for item in item.search_exact(search_string)]
+            return results
+
+        def add_new_item(self, item):
+            if item.type == 'artist':
+                node = PlexTree.Node(item.title, item)
+                self.children.append(node)
+                return node
+            if item.type == 'album':
+                album_artist = item.artist().title
+                result = self.search(album_artist)
+                if len(result) > 1:
+                    logger.error("More than one existing artist for key %s", album_artist)
+                elif len(result) == 1:
+                    if result[0].item.type == 'artist':
+                        result[0].children.append(item)
+                else:
+                    logger.error("No artist '%s' found for album '%s'", album_artist, item.title)
+            if item.type == 'track':
+                logger.error("Track items will not be added directly to the tree as of now, bad time complexity")
