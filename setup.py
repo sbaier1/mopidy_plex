@@ -29,7 +29,8 @@ setup(
         'Mopidy >= 1.0',
         'Pykka >= 1.1',
         'requests',
-        'plexapi'
+        'plexapi',
+        'cachetools'
     ],
     entry_points={
         'mopidy.ext': [

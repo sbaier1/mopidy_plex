@@ -8,11 +8,18 @@ from mopidy import backend
 from mopidy.models import Artist, Album, SearchResult, Track, Ref
 from plexapi import audio as plexaudio
 from plexapi import utils as plexutils
+from cachetools import cached, LRUCache, TTLCache
 
 from mopidy_plex import logger
 from .mwt import MWT
 
 from functools import reduce
+from functools import wraps
+
+
+def querykey(*args, **kwargs):
+    if kwargs:
+        return str(kwargs['query'])
 
 
 class PlexLibraryProvider(backend.LibraryProvider):
@@ -82,7 +89,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
             ret = []
             for item in self.plex.fetchItems('/library/metadata/{}/children'.format(artist_id)):
                 ret.append(self._item_ref(item, 'album'))
-            #for item in self.plex.fetchItems('/library/metadata/{}/allLeaves'.format(artist_id)):
+            # for item in self.plex.fetchItems('/library/metadata/{}/allLeaves'.format(artist_id)):
             #    ret.append(self._item_ref(item, 'track'))
             return ret
 
@@ -125,7 +132,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
             ret.append(wrap_track(plextrack, self.backend.plex_uri))
         return ret
 
-    #@MWT(timeout=3600)
+    # @MWT(timeout=3600)
     def get_images(self, uris):
         '''Lookup the images for the given URIs
 
@@ -137,7 +144,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         Return type:    {uri: tuple of mopidy.models.Image}'''
         return None
 
-    @MWT(timeout=3600)
+    @cached(cache=LRUCache(maxsize=32), key=querykey)
     def search(self, query=None, uris=None, exact=False):
         '''Search the library for tracks where field contains values.
 

@@ -2,20 +2,20 @@
 
 from __future__ import unicode_literals
 
-from mopidy import backend, httpclient
+from time import sleep
 
 import pykka
 import requests
-
-from plexapi.library import MusicSection
+from mopidy import backend, httpclient
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
-from .playback import PlexPlaybackProvider
-from .library import PlexLibraryProvider
-from .playlists import PlexPlaylistsProvider
 
 import mopidy_plex
 from mopidy_plex import logger
+from .library import PlexLibraryProvider
+from .playback import PlexPlaybackProvider
+from .playlists import PlexPlaylistsProvider
+
 
 def get_requests_session(proxy_config, user_agent):
     proxy = httpclient.format_proxy(proxy_config)
@@ -35,7 +35,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
         self.session = get_requests_session(proxy_config=config['proxy'],
                                             user_agent='%s/%s' % (mopidy_plex.Extension.dist_name,
                                                                   mopidy_plex.__version__)
-                                           )
+                                            )
         type = config['plex']['type']
         library = (config['plex']['library'])
         self.plex = None
@@ -44,7 +44,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
             server = (config['plex']['server'])
             user = (config['plex']['username'])
             password = (config['plex']['password'])
-            account = MyPlexAccount(user, password)
+            account = self.myplex_login(user, password)
             logger.info('Connecting to plex server: %s', server)
             self.plex = account.resource(server).connect(ssl=False)
             self.music = self.plex.library.section(library)
@@ -64,7 +64,17 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
         self.playback = PlexPlaybackProvider(audio=audio, backend=self)
         self.playlists = PlexPlaylistsProvider(backend=self)
 
-
+    def myplex_login(self, user, password):
+        max_attempts = 20
+        current_attempt = 0
+        account = None
+        try:
+            account = MyPlexAccount(user, password, session=self.session)
+        except Exception as e:
+            logger.error(e)
+            logger.error('Failed to log into MyPlex, retrying... %s/%s', current_attempt, max_attempts)
+            sleep(5)
+        return account
 
     def plex_uri(self, uri_path, prefix='plex'):
         '''Get a leaf uri and complete it to a mopidy plex uri.
