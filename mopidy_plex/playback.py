@@ -12,6 +12,9 @@ from plexapi import utils as plexutils
 from mopidy_plex import logger
 from .mwt import MWT
 
+URI_PATTERN = re.compile(r'plex:track:(?P<track_id>\d+)')
+
+
 class PlexPlaybackProvider(backend.PlaybackProvider):
 
     @MWT(timeout=3600)
@@ -29,7 +32,7 @@ class PlexPlaybackProvider(backend.PlaybackProvider):
 
         logger.debug("Playback.translate_uri Plex with uri '%s'", uri)
 
-        _rx = re.compile(r'plex:track:(?P<track_id>\d+)').match(uri)
+        _rx = URI_PATTERN.match(uri)
         if _rx is None: # uri unknown
             logger.info('Unkown uri: %s', uri)
             return None
