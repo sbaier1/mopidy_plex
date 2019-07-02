@@ -9,6 +9,7 @@ import requests
 from mopidy import backend, httpclient
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
+import traceback
 
 import mopidy_plex
 from mopidy_plex import logger
@@ -75,7 +76,8 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
                 if current_attempt > max_attempts:
                     logger.error('Could not connect to MyPlex in time, exiting...')
                     return None
-                logger.error(e)
+                traceback.print_exception(*e)
+                current_attempt += 1
                 logger.error('Failed to log into MyPlex, retrying... %s/%s', current_attempt, max_attempts)
                 sleep(5)
         return account
