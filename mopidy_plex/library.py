@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import urllib
 
+from cachetools import cached, LRUCache
 from mopidy import backend
 from mopidy.models import Artist, Album, SearchResult, Track, Ref
 from plexapi import audio as plexaudio
-from plexapi import utils as plexutils
-from cachetools import cached, LRUCache, TTLCache
+from plexapi import playlist
 
 from mopidy_plex import logger
 from .mwt import MWT
-
-from functools import reduce
-from functools import wraps
 
 
 def querykey(*args, **kwargs):
@@ -45,6 +43,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
     @MWT(timeout=3600)
     def browse(self, uri):
         logger.debug('browse: %s', str(uri))
+
         if not uri:
             return []
         if uri == self.root_directory.uri:
@@ -180,11 +179,12 @@ class PlexLibraryProvider(backend.LibraryProvider):
             search_query = ' '.join(query.values()[0])
 
         search_uri = 'plex:search:%s' % urllib.quote(search_query.encode('utf-8'))
-        logger.debug("Searching Plex with query '%s'", search_query)
+        logger.info("Searching Plex with query '%s'", search_query)
 
         artists = []
         tracks = []
         albums = []
+        playlists = []
         for hit in self.plex.search(search_query):
             if isinstance(hit, plexaudio.Artist):
                 artists.append(wrap_artist(hit, self.backend.plex_uri))
@@ -192,6 +192,10 @@ class PlexLibraryProvider(backend.LibraryProvider):
                 tracks.append(wrap_track(hit, self.backend.plex_uri))
             elif isinstance(hit, plexaudio.Album):
                 albums.append(wrap_album(hit, self.backend.plex_uri, self.backend.resolve_uri))
+            elif isinstance(hit, playlist.Playlist):
+                playlists.append(hit)
+            else:
+                logger.info("Unhandled search hit type: %s", hit)
 
         logger.debug("Got results: %s, %s, %s", artists, tracks, albums)
 

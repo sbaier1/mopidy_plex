@@ -61,7 +61,7 @@ class MWT(object):
 
         def func(*args, **kwargs):
             kw = kwargs.items()
-            kw.sort()
+            kw = sorted(kw)
             key = (args, tuple(kw))
             try:
                 v = self.cache[key]
@@ -72,6 +72,6 @@ class MWT(object):
                 log.debug("new object in cache: %s", key)
                 v = self.cache[key] = f(*args,**kwargs),time.time()
             return v[0]
-        func.func_name = f.func_name
+        func.func_name = f.__name__
 
         return func

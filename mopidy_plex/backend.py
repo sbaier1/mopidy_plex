@@ -73,7 +73,7 @@ class PlexBackend(pykka.ThreadingActor, backend.Backend):
             try:
                 account = MyPlexAccount(user, password, session=self.session)
             except Exception as e:
-                if current_attempt > max_attempts:
+                if current_attempt >= max_attempts:
                     logger.error('Could not connect to MyPlex in time, exiting...')
                     return None
                 traceback.print_exception(*e)
