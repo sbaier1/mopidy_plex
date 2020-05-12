@@ -2,50 +2,15 @@
 Mopidy-Plex
 ****************************
 
-.. image:: https://img.shields.io/pypi/v/Mopidy-Plex.svg?style=flat
-    :target: https://pypi.python.org/pypi/Mopidy-Plex/
-    :alt: Latest PyPI version
-
-.. image:: https://img.shields.io/pypi/dm/Mopidy-Plex.svg?style=flat
-    :target: https://pypi.python.org/pypi/Mopidy-Plex/
-    :alt: Number of PyPI downloads
-
-.. image:: https://img.shields.io/travis/havardgulldahl/mopidy_plex/master.svg?style=flat
-    :target: https://travis-ci.org/havardgulldahl/mopidy_plex
-    :alt: Travis CI build status
-
-.. image:: https://img.shields.io/coveralls/havardgulldahl/mopidy_plex/master.svg?style=flat
-   :target: https://coveralls.io/r/havardgulldahl/mopidy_plex
-   :alt: Test coverage
-
 Mopidy extension for playing audio from a Plex server
-
 
 Installation
 ============
 
-Install by running::
+Install from source from this repo, the package index repo is unmaintained:
 
-    pip install Mopidy-Plex
-
-Or, if available, install the Debian/Ubuntu package from `apt.mopidy.com
-<http://apt.mopidy.com/>`_.
-
-
-And you need the `python-plexapi` module as well::
-
-    pip install plexapi
-
-
-Extra setup hassle
--------------------
-
-**Update 2016-04-14** 
-
-Please pull  `python-plexapi`  directly from upstream at https://github.com/mjs7231/python-plexapi, which has proper Plex Audio support since https://github.com/mjs7231/python-plexapi/commit/443d1e76d8b7bc6e5181bb9791fb56b7462055e8 / March 15th.
-The upcoming 2.0 release of `python-plexapi` will contain this, so get that from PyPi when it is released there.
-
-
+    git clone https://github.com/sbaier1/mopidy_plex.git
+    python3 -m pip install .
 
 Configuration
 =============
@@ -80,16 +45,16 @@ If you are having trouble with some library items, you must change the default e
 Project resources
 =================
 
-- `Source code <https://github.com/havardgulldahl/mopidy-plex>`_
-- `Issue tracker <https://github.com/havardgulldahl/mopidy-plex/issues>`_
+- `Source code <https://github.com/sbaier1/mopidy-plex>`_
+- `Issue tracker <https://github.com/sbaier1/mopidy-plex/issues>`_
 
 
 Credits
 =======
 
 - Original author: `@havardgulldahl <https://github.com/havardgulldahl>`_
-- Current maintainer: `@havardgulldahl <https://github.com/havardgulldahl>`_
-- `Contributors <https://github.com/havardgulldahl/mopidy-plex/graphs/contributors>`_
+- Current maintainer: `@sbaier1 <https://github.com/sbaier1>`_
+- `Contributors <https://github.com/sbaier1/mopidy-plex/graphs/contributors>`_
 
 
 Changelog
@@ -112,3 +77,12 @@ v0.1.0c (2016-06-29)
 ----------------------------------------
 
 - Add support for remote Plex Servers
+
+v3.0.0 (2020-05-12)
+----------------------------------------
+
+- Update plexapi support to latest version
+- Add support for MyPlex backend from plexapi to connect to servers through official authN API
+- Add support for playlists in library
+- Add mopidy3 / python3 support
+- Add caching for image thumbnails
