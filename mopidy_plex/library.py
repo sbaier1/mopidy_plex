@@ -3,11 +3,10 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import urllib
-
+import urllib.parse
 from cachetools import cached, LRUCache
 from mopidy import backend
-from mopidy.models import Artist, Album, SearchResult, Track, Ref
+from mopidy.models import Artist, Album, SearchResult, Track, Ref, Image
 from plexapi import audio as plexaudio
 from plexapi import playlist
 
@@ -31,6 +30,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
         self._root = []
         self._root.append(Ref.directory(uri='plex:album', name='Albums'))
         self._root.append(Ref.directory(uri='plex:artist', name='Artists'))
+        self._image_cache = {}
 
     def _item_ref(self, item, item_type):
         if item_type == 'track':
@@ -133,19 +133,54 @@ class PlexLibraryProvider(backend.LibraryProvider):
 
     # @MWT(timeout=3600)
     def get_images(self, uris):
-        '''Lookup the images for the given URIs
+        """Lookup the images for the given URIs
 
-        Backends can use this to return image URIs for any URI they know about be it tracks, albums, playlists... The lookup result is a dictionary mapping the provided URIs to lists of images.
+        Backends can use this to return image URIs for any URI they know about
+        be it tracks, albums, playlists. The lookup result is a dictionary
+        mapping the provided URIs to lists of images.
 
-        Unknown URIs or URIs the corresponding backend couldn’t find anything for will simply return an empty list for that URI.
+        Unknown URIs or URIs the corresponding backend couldn't find anything
+        for will simply return an empty list for that URI.
 
-        Parameters: uris (list of string) – list of URIs to find images for
-        Return type:    {uri: tuple of mopidy.models.Image}'''
-        return None
+        :param uris: list of URIs to find images for
+        :type uris: list of string
+        :rtype: {uri: tuple of :class:`mopidy.models.Image`}
+
+        .. versionadded:: 1.0
+        """
+        images = {}
+        for uri in uris:
+            if uri in self._image_cache:
+                logger.debug("Returning image from cache %s" % uri)
+                images[uri] = self._image_cache[uri]
+            elif 'album' in uri:
+                actual_id = uri.replace('plex:album:', '')
+                album = self.plex.fetchItems('/library/metadata/%s' % actual_id, cls=plexaudio.Album)[0]
+                if album.thumbUrl:
+                    image = (Image(uri=album.thumbUrl, width=48, height=48),)
+                    images[uri] = image
+                    self._image_cache[uri] = image
+            elif 'artist' in uri:
+                actual_id = uri.replace('plex:artist:', '')
+                artist = self.plex.fetchItems('/library/metadata/%s' % actual_id, cls=plexaudio.Artist)[0]
+                if artist.thumbUrl:
+                    image = (Image(uri=artist.thumbUrl, width=48, height=48),)
+                    images[uri] = image
+                    self._image_cache[uri] = image
+            elif 'track' in uri:
+                actual_id = uri.replace('plex:track:', '')
+                track = self.plex.fetchItems('/library/metadata/%s' % actual_id, cls=plexaudio.Track)[0]
+                if track.thumbUrl:
+                    image = (Image(uri=track.thumbUrl, width=48, height=48),)
+                    images[uri] = image
+                    self._image_cache[uri] = image
+            else:
+                logger.warn("Could not resolve thumbnail image for url %s" % uri)
+        return images
 
     @cached(cache=LRUCache(maxsize=32), key=querykey)
     def search(self, query=None, uris=None, exact=False):
-        '''Search the library for tracks where field contains values.
+        """Search the library for tracks where field contains values.
 
         Parameters:
         query (dict) – one or more queries to search for - the dict's keys being:
@@ -166,7 +201,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
             tracks (list of Track elements) – matching tracks
             artists (list of Artist elements) – matching artists
             albums (list of Album elements) – matching albums
-        '''
+        """
 
         logger.debug("Searching Plex for track '%s'", query)
         if query is None:
@@ -176,9 +211,10 @@ class PlexLibraryProvider(backend.LibraryProvider):
         if 'uri' in query and False:  # TODO add uri limiting
             pass
         else:
-            search_query = ' '.join(query.values()[0])
+            search_query = ' '.join(list(query.values())[0])
+            # search_query = ' '.join(query.values()[0])
 
-        search_uri = 'plex:search:%s' % urllib.quote(search_query.encode('utf-8'))
+        search_uri = 'plex:search:%s' % urllib.parse.quote(search_query.encode('utf-8'))
         logger.info("Searching Plex with query '%s'", search_query)
 
         artists = []
@@ -208,7 +244,7 @@ class PlexLibraryProvider(backend.LibraryProvider):
 
 
 def wrap_track(plextrack, plex_uri_method):
-    '''Wrap a plex search result in mopidy.model.track'''
+    """Wrap a plex search result in mopidy.model.track"""
     return Track(uri=plex_uri_method(plextrack.ratingKey, 'plex:track'),
                  name=plextrack.title,
                  artists=[Artist(uri=plex_uri_method(plextrack.grandparentKey, 'plex:artist'),
@@ -223,20 +259,19 @@ def wrap_track(plextrack, plex_uri_method):
 
 
 def wrap_artist(plexartist, plex_uri_method):
-    '''Wrap a plex search result in mopidy.model.artist'''
+    """Wrap a plex search result in mopidy.model.artist"""
     return Artist(uri=plex_uri_method(plexartist.ratingKey, 'plex:artist'),
                   name=plexartist.title)
 
 
 def wrap_album(plexalbum, plex_uri_method, resolve_uri_method):
-    '''Wrap a plex search result in mopidy.model.album'''
+    """Wrap a plex search result in mopidy.model.album"""
+
     return Album(uri=plex_uri_method(plexalbum.ratingKey, 'plex:album'),
                  name=plexalbum.title,
                  artists=[Artist(uri=plex_uri_method(plexalbum.parentKey, 'plex:artist'),
                                  name=plexalbum.parentTitle)],
                  num_tracks=len(plexalbum.tracks()),
                  num_discs=None,
-                 date=str(plexalbum.year),
-                 images=[resolve_uri_method(plexalbum.thumb),
-                         resolve_uri_method(plexalbum.art)]
+                 date=str(plexalbum.year)
                  )
